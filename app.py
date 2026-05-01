@@ -31,6 +31,7 @@ Spy = False
 Chat_Leave = False
 squad_owner_uid = None
 squad_data_ready = None
+squad_all_uids = []
 #------------------------------------------#
 
 app = Flask(__name__)
@@ -246,7 +247,7 @@ async def SEndPacKeT(OnLinE, ChaT, TypE, PacKeT):
         print(f"[DEBUG SEndPacKeT] ❌ UnsoPorTed TypE={TypE}")
            
 async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
-    global online_writer , spam_room , whisper_writer , spammer_uid , spam_chat_id , spam_uid , XX , uid , Spy,data2, Chat_Leave, squad_owner_uid, squad_data_ready
+    global online_writer , spam_room , whisper_writer , spammer_uid , spam_chat_id , spam_uid , XX , uid , Spy,data2, Chat_Leave, squad_owner_uid, squad_data_ready, squad_all_uids
     while True:
         try:
             reader , writer = await asyncio.open_connection(ip, int(port))
@@ -266,6 +267,9 @@ async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
                         packet = json.loads(packet)
                         OwNer_UiD , CHaT_CoDe , SQuAD_CoDe = await GeTSQDaTa(packet)
                         squad_owner_uid = OwNer_UiD
+                        squad_all_uids = await GetAllMemberUIDs(packet)
+                        if squad_owner_uid not in squad_all_uids:
+                            squad_all_uids.append(squad_owner_uid)
                         squad_data_ready.set()
 
                         JoinCHaT = await AutH_Chat(3 , OwNer_UiD , CHaT_CoDe, key,iv)
@@ -284,7 +288,6 @@ async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
                                 print(packet)
                                 packet = json.loads(packet)
                                 OwNer_UiD , CHaT_CoDe , SQuAD_CoDe = await GeTSQDaTa(packet)
-
                                 JoinCHaT = await AutH_Chat(3 , OwNer_UiD , CHaT_CoDe, key,iv)
                                 await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , JoinCHaT)
 
@@ -493,42 +496,53 @@ async def TcPChaT(ip, port, AutHToKen, key, iv, LoGinDaTaUncRypTinG, ready_event
 
 loop = None
     
-async def perform_emote(team_code: str, extra_uids: list = []):
+async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: list = None):
     global key, iv, region, online_writer, BOT_UID
-    global squad_owner_uid, squad_data_ready
+    global squad_owner_uid, squad_data_ready, squad_all_uids
 
     if online_writer is None:
         raise Exception("Bot not connected")
 
-    # ✅ Check squad_data_ready đã được khởi tạo chưa
     if squad_data_ready is None:
         raise Exception("squad_data_ready chưa được khởi tạo")
 
     # Reset trước khi join
     squad_owner_uid = None
+    squad_all_uids = []
     squad_data_ready.clear()
 
     try:
+        await asyncio.sleep(0.1)
+
         # Join squad
         EM = await GenJoinSquadsPacket(team_code, key, iv)
         await SEndPacKeT(online_writer, None, 'OnLine', EM)
 
-        # Chờ server trả 0500 (timeout 5s)
+        # Chờ server trả 0500 timeout 10s
         try:
-            await asyncio.wait_for(squad_data_ready.wait(), timeout=5.0)
+            await asyncio.wait_for(squad_data_ready.wait(), timeout=10.0)
         except asyncio.TimeoutError:
-            raise Exception("Timeout: không nhận được squad data từ server")
+            if squad_owner_uid is not None:
+                print("[EMT] ⚠️ Timeout nhưng có owner UID, tiếp tục...")
+            else:
+                raise Exception("Timeout: không nhận được squad data từ server")
 
-        # ✅ Check owner UID có hợp lệ không
-        if squad_owner_uid is None or not isinstance(squad_owner_uid, int) or squad_owner_uid <= 0:
-            raise Exception(f"Owner UID không hợp lệ: {squad_owner_uid}")
+        if squad_owner_uid is None:
+            raise Exception("Không lấy được owner UID")
 
-        # Merge owner + extra UIDs + BOT_UID
-        all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
-        print(f"[EMT] UIDs: owner={squad_owner_uid} | extra={extra_uids} | all={all_uids}")
+        # Xử lý các trường hợp squad
+        if squad_all_uids:
+            all_uids = list(set(squad_all_uids) | set(extra_uids) | {BOT_UID})
+            print(f"[EMT] Squad có {len(squad_all_uids)} người: {squad_all_uids}")
+        else:
+            print(f"[EMT] Squad chỉ có chủ phòng: {squad_owner_uid}")
+            all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
 
-        for emote_id in random.sample(list_emotes, len(list_emotes)):
-            # ✅ Check kết nối trước mỗi emote
+        print(f"[EMT] Total {len(all_uids)} UIDs: {all_uids}")
+
+        emotes_to_use = custom_emotes if custom_emotes else list_emotes
+
+        for emote_id in random.sample(emotes_to_use, len(emotes_to_use)):
             if online_writer is None:
                 print("[EMT] ❌ Mất kết nối giữa chừng")
                 return {"status": "error", "message": "Connection lost during emote"}
@@ -538,18 +552,21 @@ async def perform_emote(team_code: str, extra_uids: list = []):
                     H = await Emote_k(uid_int, emote_id, key, iv, region)
                     await SEndPacKeT(online_writer, None, 'OnLine', H)
                 except Exception as e:
-                    # ✅ Lỗi 1 uid thì bỏ qua, không dừng cả loop
                     print(f"[EMT] ❌ Lỗi uid={uid_int} emote={emote_id}: {e}")
                     continue
 
-            await asyncio.sleep(6.2)
+            await asyncio.sleep(3.0)
 
-        # Exit squad
         if online_writer:
             LV = await ExiT(BOT_UID, key, iv)
             await SEndPacKeT(online_writer, None, 'OnLine', LV)
 
-        return {"status": "success", "message": f"Done {len(list_emotes)} emotes", "uids": all_uids}
+        return {
+            "status": "success",
+            "message": f"Done {len(emotes_to_use)} emotes",
+            "uids": all_uids,
+            "owner": squad_owner_uid
+        }
 
     except Exception as e:
         traceback.print_exc()
