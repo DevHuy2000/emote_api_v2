@@ -249,7 +249,7 @@ async def SEndPacKeT(OnLinE, ChaT, TypE, PacKeT):
             print(f"[DEBUG SEndPacKeT] ❌ Unsupported TypE={TypE}")
            
 async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
-    global online_writer, spam_room, whisper_writer, spammer_uid, spam_chat_id, spam_uid, XX, uid, Spy, data2, Chat_Leave, squad_owner_uid, squad_data_ready, squad_all_uids
+    global online_writer, spam_room, whisper_writer, spammer_uid, spam_chat_id, spam_uid, XX, uid, Spy, data2, Chat_Leave, squad_owner_uid, squad_data_ready, squad_all_uids, BOT_UID
     while True:
         try:
             reader, writer = await asyncio.open_connection(ip, int(port))
