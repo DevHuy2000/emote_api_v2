@@ -271,15 +271,17 @@ async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
                         if squad_owner_uid not in squad_all_uids:
                             squad_all_uids.append(squad_owner_uid)
                         squad_data_ready.set()
-
-                        JoinCHaT = await AutH_Chat(3 , OwNer_UiD , CHaT_CoDe, key,iv)
-                        await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , JoinCHaT)
-
-
-                        message = f'[B][C]{get_random_color()}\n- WeLComE To Emote Bot ! '
-                        P = await SEndMsG(0 , message , OwNer_UiD , OwNer_UiD , key , iv)
-                        await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , P)
-
+                        try:
+                          if whisper_writer:
+                              JoinCHaT = await AutH_Chat(3 , OwNer_UiD , CHaT_CoDe, key,iv)
+                              await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , JoinCHaT)
+                              message = f'[B][C]{get_random_color()}\n- WeLComE To Emote Bot ! '
+                              P = await SEndMsG(0 , message , OwNer_UiD , OwNer_UiD , key , iv)
+                              await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , P)
+                          else:
+                              print("[0500] ⚠️ whisper_writer None, bỏ qua chat join")
+                        except Exception as e:
+                             print(f"[0500] ⚠️ Chat join lỗi: {e}")
                     except:
                         if data2.hex().startswith('0500') and len(data2.hex()) > 1000:
                             try:
