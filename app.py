@@ -31,7 +31,6 @@ Spy = False
 Chat_Leave = False
 squad_owner_uid = None
 squad_data_ready = None
-squad_all_uids = []
 #------------------------------------------#
 
 app = Flask(__name__)
@@ -232,27 +231,25 @@ async def SEndMsG(H , message , Uid , chat_id , key , iv):
     elif TypE == 'PrivaTe': msg_packet = await xSEndMsg(message , 2 , Uid , Uid , key , iv)
     return msg_packet
 
-write_lock = asyncio.Lock()
 async def SEndPacKeT(OnLinE, ChaT, TypE, PacKeT):
-    global write_lock
-    async with write_lock:
-        if TypE == 'ChaT' and ChaT:
-            whisper_writer.write(PacKeT)
-            await whisper_writer.drain()
-        elif TypE == 'OnLine':
-            if OnLinE is None:
-                print("[DEBUG SEndPacKeT] ❌ OnLine writer là None!")
-                return
-            OnLinE.write(PacKeT)
-            await OnLinE.drain()
-        else:
-            print(f"[DEBUG SEndPacKeT] ❌ Unsupported TypE={TypE}")
+    print(f"[DEBUG SEndPacKeT] TypE={TypE} | ChaT writer={'OK' if ChaT else 'None'} | OnLine writer={'OK' if OnLinE else 'None'} | packet_len={len(PacKeT) if PacKeT else 0}")
+    if TypE == 'ChaT' and ChaT:
+        whisper_writer.write(PacKeT)
+        await whisper_writer.drain()
+    elif TypE == 'OnLine':
+        if OnLinE is None:
+            print("[DEBUG SEndPacKeT] ❌ OnLine writer là None!")
+            return
+        OnLinE.write(PacKeT)
+        await OnLinE.drain()
+    else:
+        print(f"[DEBUG SEndPacKeT] ❌ UnsoPorTed TypE={TypE}")
            
 async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
-    global online_writer, spam_room, whisper_writer, spammer_uid, spam_chat_id, spam_uid, XX, uid, Spy, data2, Chat_Leave, squad_owner_uid, squad_data_ready, squad_all_uids, BOT_UID
+    global online_writer , spam_room , whisper_writer , spammer_uid , spam_chat_id , spam_uid , XX , uid , Spy,data2, Chat_Leave, squad_owner_uid, squad_data_ready
     while True:
         try:
-            reader, writer = await asyncio.open_connection(ip, int(port))
+            reader , writer = await asyncio.open_connection(ip, int(port))
             online_writer = writer
             bytes_payload = bytes.fromhex(AutHToKen)
             online_writer.write(bytes_payload)
@@ -260,36 +257,47 @@ async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
             while True:
                 data2 = await reader.read(9999)
                 if not data2: break
-
+                
                 if data2.hex().startswith('0500') and len(data2.hex()) > 1000:
                     try:
+                        print(data2.hex()[10:])
                         packet = await DeCode_PackEt(data2.hex()[10:])
+                        #print(packet)
                         packet = json.loads(packet)
-                        OwNer_UiD, CHaT_CoDe, SQuAD_CoDe = await GeTSQDaTa(packet)
+                        OwNer_UiD , CHaT_CoDe , SQuAD_CoDe = await GeTSQDaTa(packet)
                         squad_owner_uid = OwNer_UiD
-                        squad_all_uids = await GetAllMemberUIDs(packet)
-                        if squad_owner_uid not in squad_all_uids:
-                            squad_all_uids.append(squad_owner_uid)
                         squad_data_ready.set()
-                        try:
-                            if whisper_writer:
-                                JoinCHaT = await AutH_Chat(3, OwNer_UiD, CHaT_CoDe, key, iv)
-                                await SEndPacKeT(whisper_writer, online_writer, 'ChaT', JoinCHaT)
-                                message = f'[B][C]{get_random_color()}\n- WeLComE To Emote Bot ! '
-                                P = await SEndMsG(0, message, OwNer_UiD, OwNer_UiD, key, iv)
-                                await SEndPacKeT(whisper_writer, online_writer, 'ChaT', P)
-                        except Exception as e:
-                            print(f"[0500] ⚠️ Chat join lỗi: {e}")
-                    except Exception as e:
-                        print(f"[0500] ⚠️ Parse packet lỗi: {e}")
 
-            online_writer.close()
-            await online_writer.wait_closed()
-            online_writer = None
+                        JoinCHaT = await AutH_Chat(3 , OwNer_UiD , CHaT_CoDe, key,iv)
+                        await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , JoinCHaT)
 
-        except Exception as e:
-            print(f"- ErroR With {ip}:{port} - {e}")
-            online_writer = None
+
+                        message = f'[B][C]{get_random_color()}\n- WeLComE To Emote Bot ! '
+                        P = await SEndMsG(0 , message , OwNer_UiD , OwNer_UiD , key , iv)
+                        await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , P)
+
+                    except:
+                        if data2.hex().startswith('0500') and len(data2.hex()) > 1000:
+                            try:
+                                print(data2.hex()[10:])
+                                packet = await DeCode_PackEt(data2.hex()[10:])
+                                print(packet)
+                                packet = json.loads(packet)
+                                OwNer_UiD , CHaT_CoDe , SQuAD_CoDe = await GeTSQDaTa(packet)
+
+                                JoinCHaT = await AutH_Chat(3 , OwNer_UiD , CHaT_CoDe, key,iv)
+                                await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , JoinCHaT)
+
+
+                                message = f'[B][C]{get_random_color()}\n- WeLComE To Emote Bot !'
+                                P = await SEndMsG(0 , message , OwNer_UiD , OwNer_UiD , key , iv)
+                                await SEndPacKeT(whisper_writer , online_writer , 'ChaT' , P)
+                            except:
+                                pass
+
+            online_writer.close() ; await online_writer.wait_closed() ; online_writer = None
+
+        except Exception as e: print(f"- ErroR With {ip}:{port} - {e}") ; online_writer = None
         await asyncio.sleep(reconnect_delay)
                             
 async def TcPChaT(ip, port, AutHToKen, key, iv, LoGinDaTaUncRypTinG, ready_event, region , reconnect_delay=0.5):
@@ -484,10 +492,10 @@ async def TcPChaT(ip, port, AutHToKen, key, iv, LoGinDaTaUncRypTinG, ready_event
 # ---------------------- FLASK ROUTES ----------------------
 
 loop = None
-
+    
 async def perform_emote(team_code: str, extra_uids: list = []):
     global key, iv, region, online_writer, BOT_UID
-    global squad_owner_uid, squad_data_ready, squad_all_uids
+    global squad_owner_uid, squad_data_ready
 
     if online_writer is None:
         raise Exception("Bot not connected")
@@ -497,7 +505,6 @@ async def perform_emote(team_code: str, extra_uids: list = []):
 
     # Reset
     squad_owner_uid = None
-    squad_all_uids = []
     squad_data_ready.clear()
 
     try:
@@ -505,41 +512,30 @@ async def perform_emote(team_code: str, extra_uids: list = []):
         EM = await GenJoinSquadsPacket(team_code, key, iv)
         await SEndPacKeT(online_writer, None, 'OnLine', EM)
 
-        # Chờ server trả 0500
         try:
             await asyncio.wait_for(squad_data_ready.wait(), timeout=5.0)
         except asyncio.TimeoutError:
             raise Exception("Timeout: không nhận được squad data từ server")
 
+        # ✅ Check owner UID
         if squad_owner_uid is None or not isinstance(squad_owner_uid, int) or squad_owner_uid <= 0:
             raise Exception(f"Owner UID không hợp lệ: {squad_owner_uid}")
-
-        # ✅ Chọn owner + 1 member bất kỳ (không phải owner, không phải bot) + bot
-        other_members = [u for u in squad_all_uids if u != squad_owner_uid and u != BOT_UID]
-        if other_members:
-            random_member = random.choice(other_members)
-            all_uids = [BOT_UID, squad_owner_uid, random_member]
-            print(f"[EMT] owner={squad_owner_uid} | random_member={random_member} | bot={BOT_UID}")
-        else:
-            all_uids = [BOT_UID, squad_owner_uid]
-            print(f"[EMT] Chỉ có owner={squad_owner_uid} | bot={BOT_UID}")
-
+        all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
+        print(f"[EMT] UIDs: owner={squad_owner_uid} | extra={extra_uids} | all={all_uids}")
         for emote_id in random.sample(list_emotes, len(list_emotes)):
+            # ✅ Check kết nối
             if online_writer is None:
+                print("[EMT] ❌ Mất kết nối giữa chừng")
                 return {"status": "error", "message": "Connection lost during emote"}
-
-            # ✅ Build tất cả packet trước, flush 1 lần để đồng bộ
-            packets = []
             for uid_int in all_uids:
-                H = await Emote_k(uid_int, emote_id, key, iv, region)
-                packets.append(H)
-
-            for pkt in packets:
-                online_writer.write(pkt)
-            await online_writer.drain()
-
-            await asyncio.sleep(6.2)
-
+                try:
+                    H = await Emote_k(uid_int, emote_id, key, iv, region)
+                    await SEndPacKeT(online_writer, None, 'OnLine', H)
+                except Exception as e:
+                    print(f"[EMT] ❌ Lỗi uid={uid_int} emote={emote_id}: {e}")
+                    continue
+            await asyncio.sleep(6.2) # sleep chờ trước khi chuyển sang emote khác.
+        # Exit squad
         if online_writer:
             LV = await ExiT(BOT_UID, key, iv)
             await SEndPacKeT(online_writer, None, 'OnLine', LV)
@@ -557,7 +553,6 @@ async def perform_squad_invite(uid: int):
     if online_writer is None:
         raise Exception("Bot not connected")
 
-    # Mở squad, set capacity 5, invite uid, rồi exit
     PAc = await OpEnSq(key, iv, region)
     await SEndPacKeT(whisper_writer, online_writer, 'OnLine', PAc)
 

@@ -324,61 +324,8 @@ async def Emote_k(TarGeT , idT, K, V,region):
 
 #EMOTES BY PARAHEX X CODEX
 
+
 async def GeTSQDaTa(D):
-    squad_data = D['5']['data']
-    
-    # Debug xem tất cả các field trong squad_data
-    print("[SQUAD FIELDS]", {k: v['wire_type'] for k, v in squad_data.items()})
-    
-    # In thử field 3, 4, 6 xem có UID không
-    for field in ['2', '3', '4', '6', '7', '8']:
-        if field in squad_data:
-            print(f"[SQUAD field {field}]", squad_data[field])
-    
-    uid = squad_data['1']['data']
-    chat_code = squad_data["14"]["data"]
-    squad_code = squad_data["31"]["data"]
-    return uid, chat_code, squad_code
-
-async def GetAllMemberUIDs(D):
-    uids = []
-
-    def extract_uids(d):
-        if not isinstance(d, dict):
-            return
-        for field, val in d.items():
-            if not isinstance(val, dict):
-                continue
-            wire_type = val.get('wire_type')
-            data = val.get('data', 0)
-            if wire_type == 'varint' and isinstance(data, int):
-                if 100_000_000 <= data <= 99_999_999_999:
-                    uids.append(data)
-            elif wire_type == 'string' and isinstance(data, str):
-                try:
-                    uid = int(data)
-                    if 100_000_000 <= uid <= 99_999_999_999:
-                        uids.append(uid)
-                except:
-                    pass
-            elif wire_type == 'length_delimited' and isinstance(data, dict):
-                # Đệ quy vào nested
-                extract_uids(data)
-
-    try:
-        squad_data = D['5']['data']
-        extract_uids(squad_data)
-    except Exception as e:
-        print(f"[GetAllMemberUIDs] Error: {e}")
-
-    uids = list(set(uids))
-    uids = [u for u in uids if u != BOT_UID]
-    print(f"[GetAllMemberUIDs] Found {len(uids)} UIDs: {uids}")
-    return uids
-
-
-
-async def GeTSQDaT(D):
     uid = D['5']['data']['1']['data']
     chat_code = D["5"]["data"]["14"]["data"]
     squad_code = D["5"]["data"]["31"]["data"]
