@@ -232,19 +232,21 @@ async def SEndMsG(H , message , Uid , chat_id , key , iv):
     elif TypE == 'PrivaTe': msg_packet = await xSEndMsg(message , 2 , Uid , Uid , key , iv)
     return msg_packet
 
+write_lock = asyncio.Lock()
 async def SEndPacKeT(OnLinE, ChaT, TypE, PacKeT):
-    print(f"[DEBUG SEndPacKeT] TypE={TypE} | ChaT writer={'OK' if ChaT else 'None'} | OnLine writer={'OK' if OnLinE else 'None'} | packet_len={len(PacKeT) if PacKeT else 0}")
-    if TypE == 'ChaT' and ChaT:
-        whisper_writer.write(PacKeT)
-        await whisper_writer.drain()
-    elif TypE == 'OnLine':
-        if OnLinE is None:
-            print("[DEBUG SEndPacKeT] ❌ OnLine writer là None!")
-            return
-        OnLinE.write(PacKeT)
-        await OnLinE.drain()
-    else:
-        print(f"[DEBUG SEndPacKeT] ❌ UnsoPorTed TypE={TypE}")
+    global write_lock
+    async with write_lock:
+        if TypE == 'ChaT' and ChaT:
+            whisper_writer.write(PacKeT)
+            await whisper_writer.drain()
+        elif TypE == 'OnLine':
+            if OnLinE is None:
+                print("[DEBUG SEndPacKeT] ❌ OnLine writer là None!")
+                return
+            OnLinE.write(PacKeT)
+            await OnLinE.drain()
+        else:
+            print(f"[DEBUG SEndPacKeT] ❌ Unsupported TypE={TypE}")
            
 async def TcPOnLine(ip, port, key, iv, AutHToKen, reconnect_delay=0.5):
     global online_writer , spam_room , whisper_writer , spammer_uid , spam_chat_id , spam_uid , XX , uid , Spy,data2, Chat_Leave, squad_owner_uid, squad_data_ready, squad_all_uids
@@ -521,7 +523,7 @@ async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: li
     squad_data_ready.clear()
 
     try:
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.3)
 
         # Join squad
         EM = await GenJoinSquadsPacket(team_code, key, iv)
@@ -535,6 +537,7 @@ async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: li
                 print("[EMT] ⚠️ Timeout nhưng có owner UID, tiếp tục...")
             else:
                 raise Exception("Timeout: không nhận được squad data từ server")
+        await asyncio.sleep(2.0)
 
         if squad_owner_uid is None:
             raise Exception("Không lấy được owner UID")
