@@ -495,7 +495,14 @@ async def TcPChaT(ip, port, AutHToKen, key, iv, LoGinDaTaUncRypTinG, ready_event
 # ---------------------- FLASK ROUTES ----------------------
 
 loop = None
-    
+
+async def send_emote_to_uid(uid_int, emote_id, key, iv, region):
+    try:
+        H = await Emote_k(uid_int, emote_id, key, iv, region)
+        await SEndPacKeT(online_writer, None, 'OnLine', H)
+    except Exception as e:
+        print(f"[EMT] ❌ Lỗi uid={uid_int} emote={emote_id}: {e}")
+
 async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: list = None):
     global key, iv, region, online_writer, BOT_UID
     global squad_owner_uid, squad_data_ready, squad_all_uids
@@ -547,15 +554,13 @@ async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: li
                 print("[EMT] ❌ Mất kết nối giữa chừng")
                 return {"status": "error", "message": "Connection lost during emote"}
 
-            for uid_int in all_uids:
-                try:
-                    H = await Emote_k(uid_int, emote_id, key, iv, region)
-                    await SEndPacKeT(online_writer, None, 'OnLine', H)
-                except Exception as e:
-                    print(f"[EMT] ❌ Lỗi uid={uid_int} emote={emote_id}: {e}")
-                    continue
+            # ✅ Gửi tất cả UIDs cùng lúc
+            await asyncio.gather(
+                *[send_emote_to_uid(uid_int, emote_id, key, iv, region) for uid_int in all_uids],
+                return_exceptions=True
+            )
 
-            await asyncio.sleep(3.0)
+            await asyncio.sleep(6.2)
 
         if online_writer:
             LV = await ExiT(BOT_UID, key, iv)
