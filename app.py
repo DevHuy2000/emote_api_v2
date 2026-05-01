@@ -500,13 +500,6 @@ async def TcPChaT(ip, port, AutHToKen, key, iv, LoGinDaTaUncRypTinG, ready_event
 
 loop = None
 
-async def send_emote_to_uid(uid_int, emote_id, key, iv, region):
-    try:
-        H = await Emote_k(uid_int, emote_id, key, iv, region)
-        await SEndPacKeT(online_writer, None, 'OnLine', H)
-    except Exception as e:
-        print(f"[EMT] ❌ Lỗi uid={uid_int} emote={emote_id}: {e}")
-
 async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: list = None):
     global key, iv, region, online_writer, BOT_UID
     global squad_owner_uid, squad_data_ready, squad_all_uids
@@ -523,7 +516,7 @@ async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: li
     squad_data_ready.clear()
 
     try:
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.01)
 
         # Join squad
         EM = await GenJoinSquadsPacket(team_code, key, iv)
@@ -531,39 +524,48 @@ async def perform_emote(team_code: str, extra_uids: list = [], custom_emotes: li
 
         # Chờ server trả 0500 timeout 10s
         try:
-            await asyncio.wait_for(squad_data_ready.wait(), timeout=10.0)
+            await asyncio.wait_for(squad_data_ready.wait(), timeout=5)
         except asyncio.TimeoutError:
             if squad_owner_uid is not None:
                 print("[EMT] ⚠️ Timeout nhưng có owner UID, tiếp tục...")
             else:
                 raise Exception("Timeout: không nhận được squad data từ server")
-        await asyncio.sleep(2.0)
+
+        await asyncio.sleep(2.0)  # Chờ bot thực sự vào phòng trên server
 
         if squad_owner_uid is None:
             raise Exception("Không lấy được owner UID")
 
-        # Xử lý các trường hợp squad
+        # ✅ Chọn 3 UID: bot + chủ phòng + 1 member bất kỳ
         if squad_all_uids:
-            all_uids = list(set(squad_all_uids) | set(extra_uids) | {BOT_UID})
-            print(f"[EMT] Squad có {len(squad_all_uids)} người: {squad_all_uids}")
+            other_members = [u for u in squad_all_uids if u != squad_owner_uid and u != BOT_UID]
+            if other_members:
+                random_member = random.choice(other_members)
+                all_uids = [BOT_UID, squad_owner_uid, random_member]
+            else:
+                all_uids = [BOT_UID, squad_owner_uid]
         else:
-            print(f"[EMT] Squad chỉ có chủ phòng: {squad_owner_uid}")
-            all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
+            all_uids = [BOT_UID, squad_owner_uid]
 
-        print(f"[EMT] Total {len(all_uids)} UIDs: {all_uids}")
+        print(f"[EMT] Emote cho {len(all_uids)} UIDs: {all_uids}")
 
         emotes_to_use = custom_emotes if custom_emotes else list_emotes
 
+        # ✅ Build packet trước, flush 1 lần để đồng bộ
         for emote_id in random.sample(emotes_to_use, len(emotes_to_use)):
             if online_writer is None:
                 print("[EMT] ❌ Mất kết nối giữa chừng")
                 return {"status": "error", "message": "Connection lost during emote"}
 
-            # ✅ Gửi tất cả UIDs cùng lúc
-            await asyncio.gather(
-                *[send_emote_to_uid(uid_int, emote_id, key, iv, region) for uid_int in all_uids],
-                return_exceptions=True
-            )
+            packets = []
+            for uid_int in all_uids:
+                H = await Emote_k(uid_int, emote_id, key, iv, region)
+                packets.append(H)
+
+            # Gửi tất cả vào buffer rồi drain 1 lần
+            for pkt in packets:
+                online_writer.write(pkt)
+            await online_writer.drain()
 
             await asyncio.sleep(6.2)
 
