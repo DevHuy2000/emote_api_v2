@@ -68,6 +68,39 @@ async def encrypted_proto(encoded_hex):
     encrypted_payload = cipher.encrypt(padded_message)
     return encrypted_payload
     
+async def bundle_packet_async(key, iv):
+    fields = {
+        1: 88,
+        2: {
+            1: {
+                1: 914050001,
+            }
+        }
+    }
+    packet = await CrEaTe_ProTo(fields)
+    packet_hex = packet.hex()
+    encrypted = await EnC_PacKeT(packet_hex, key, iv)
+    header_length = len(encrypted) // 2
+    header_length_hex = await DecodE_HeX(header_length)
+    if region.lower() == "ind":
+        packet_type = '0514'
+    elif region.lower() == "bd":
+        packet_type = "0519"
+    else:
+        packet_type = "0515"
+    if len(header_length_hex) == 2:
+        final_header = f"{packet_type}000000"
+    elif len(header_length_hex) == 3:
+        final_header = f"{packet_type}00000"
+    elif len(header_length_hex) == 4:
+        final_header = f"{packet_type}0000"
+    elif len(header_length_hex) == 5:
+        final_header = f"{packet_type}000"
+    else:
+        final_header = f"{packet_type}000000"
+    final_packet_hex = final_header + header_length_hex + encrypted
+    return bytes.fromhex(final_packet_hex)
+
 async def GeNeRaTeAccEss(uid , password):
     url = "https://100067.connect.garena.com/oauth/guest/token/grant"
     data = {
@@ -512,6 +545,15 @@ async def perform_emote(team_code: str, extra_uids: list = []):
         EM = await GenJoinSquadsPacket(team_code, key, iv)
         await SEndPacKeT(online_writer, None, 'OnLine', EM)
 
+        # Thay đồ bundle 914050001
+        try:
+            bundle_pkt = await bundle_packet_async(key, iv)
+            online_writer.write(bundle_pkt)
+            await online_writer.drain()
+            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
+        except Exception as e:
+            print(f"[BUNDLE] ❌ Lỗi: {e}")
+
         try:
             await asyncio.wait_for(squad_data_ready.wait(), timeout=5.0)
         except asyncio.TimeoutError:
@@ -546,6 +588,63 @@ async def perform_emote(team_code: str, extra_uids: list = []):
         traceback.print_exc()
         print(f"[EMT] ❌ perform_emote thất bại: {e}")
         raise Exception(f"Failed: {str(e)}")
+
+async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: list = []):
+    global key, iv, region, online_writer, BOT_UID
+    global squad_owner_uid, squad_data_ready
+
+    if online_writer is None:
+        raise Exception("Bot not connected")
+
+    if squad_data_ready is None:
+        raise Exception("squad_data_ready chưa được khởi tạo")
+
+    # Reset
+    squad_owner_uid = None
+    squad_data_ready.clear()
+
+    try:
+        # Join squad
+        EM = await GenJoinSquadsPacket(team_code, key, iv)
+        await SEndPacKeT(online_writer, None, 'OnLine', EM)
+
+        # Thay đồ bundle 914050001
+        try:
+            bundle_pkt = await bundle_packet_async(key, iv)
+            online_writer.write(bundle_pkt)
+            await online_writer.drain()
+            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
+        except Exception as e:
+            print(f"[BUNDLE] ❌ Lỗi: {e}")
+
+        try:
+            await asyncio.wait_for(squad_data_ready.wait(), timeout=5.0)
+        except asyncio.TimeoutError:
+            raise Exception("Timeout: không nhận được squad data từ server")
+
+        # ✅ Check owner UID
+        if squad_owner_uid is None or not isinstance(squad_owner_uid, int) or squad_owner_uid <= 0:
+            raise Exception(f"Owner UID không hợp lệ: {squad_owner_uid}")
+        all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
+        print(f"[EMT_CUSTOM] UIDs: owner={squad_owner_uid} | extra={extra_uids} | all={all_uids}")
+        for emote_id in custom_emotes:
+            if online_writer is None:
+                print("[EMT_CUSTOM] ❌ Mất kết nối giữa chừng")
+                return {"status": "error", "message": "Connection lost during emote"}
+            for uid_int in all_uids:
+                try:
+                    H = await Emote_k(uid_int, emote_id, key, iv, region)
+                    await SEndPacKeT(online_writer, None, 'OnLine', H)
+                except Exception as e:
+                    print(f"[EMT_CUSTOM] ❌ Lỗi uid={uid_int} emote={emote_id}: {e}")
+                    continue
+            await asyncio.sleep(6.2)
+        # Exit squad
+        if online_writer:
+            LV = await ExiT(BOT_UID, key, iv)
+            await SEndPacKeT(online_writer, None, 'OnLine', LV)
+
+        return {"status": "success", "message": f"Done {len(custom_emotes)} emotes", "uids": all_uids, "emotes": custom_emotes}
 
 async def perform_squad_invite(uid: int):
     global key, iv, region, online_writer, whisper_writer, BOT_UID
@@ -625,6 +724,51 @@ def join_team():
         "team_code": team_code,
         "Dev": "@S_ZU_01",
         "message": "Bot Đang Join, Và Thực Hiện Gởi Emote..."
+    })
+
+
+@app.route('/join_c')
+def join_team_custom():
+    global loop
+    team_code = request.args.get('tc')
+    emotes_raw = request.args.get('id')  # vd: 909040010,909000063,909035007
+    uid1 = request.args.get('uid1')
+    uid2 = request.args.get('uid2')
+    uid3 = request.args.get('uid3')
+    uid4 = request.args.get('uid4')
+
+    if not team_code:
+        return jsonify({"status": "error", "message": "Thiếu tc."})
+
+    if not emotes_raw:
+        return jsonify({"status": "error", "message": "Thiếu emotes. Vd: emotes=909040010,909000063"})
+
+    custom_emotes = []
+    for e in emotes_raw.split(','):
+        try:
+            custom_emotes.append(int(e.strip()))
+        except:
+            pass
+
+    if not custom_emotes:
+        return jsonify({"status": "error", "message": "Danh sách emote không hợp lệ."})
+
+    extra_uids = []
+    for u in [uid1, uid2, uid3, uid4]:
+        try:
+            if u: extra_uids.append(int(u))
+        except: pass
+
+    asyncio.run_coroutine_threadsafe(
+        perform_emote_custom(team_code, custom_emotes, extra_uids), loop
+    )
+
+    return jsonify({
+        "status": "success",
+        "team_code": team_code,
+        "emotes": custom_emotes,
+        "Dev": "@S_ZU_01",
+        "message": "Bot Đang Join, Thay Đồ, Và Gởi Custom Emote..."
     })
 
 def run_flask():
