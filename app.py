@@ -545,15 +545,6 @@ async def perform_emote(team_code: str, extra_uids: list = []):
         EM = await GenJoinSquadsPacket(team_code, key, iv)
         await SEndPacKeT(online_writer, None, 'OnLine', EM)
 
-        # Thay đồ bundle 914050001
-        try:
-            bundle_pkt = await bundle_packet_async(key, iv)
-            online_writer.write(bundle_pkt)
-            await online_writer.drain()
-            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
-        except Exception as e:
-            print(f"[BUNDLE] ❌ Lỗi: {e}")
-
         try:
             await asyncio.wait_for(squad_data_ready.wait(), timeout=5.0)
         except asyncio.TimeoutError:
@@ -564,6 +555,17 @@ async def perform_emote(team_code: str, extra_uids: list = []):
             raise Exception(f"Owner UID không hợp lệ: {squad_owner_uid}")
         all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
         print(f"[EMT] UIDs: owner={squad_owner_uid} | extra={extra_uids} | all={all_uids}")
+
+        # Thay đồ bundle 914050001 (sau khi đã join squad thành công)
+        try:
+            bundle_pkt = await bundle_packet_async(key, iv)
+            online_writer.write(bundle_pkt)
+            await online_writer.drain()
+            await asyncio.sleep(0.5)
+            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
+        except Exception as e:
+            print(f"[BUNDLE] ❌ Lỗi: {e}")
+
         for emote_id in random.sample(list_emotes, len(list_emotes)):
             # ✅ Check kết nối
             if online_writer is None:
@@ -607,17 +609,6 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
         # Join squad
         EM = await GenJoinSquadsPacket(team_code, key, iv)
         await SEndPacKeT(online_writer, None, 'OnLine', EM)
-        await asyncio.sleep(0.5)
-
-        # Thay đồ bundle 914050001
-        try:
-            bundle_pkt = await bundle_packet_async(key, iv)
-            online_writer.write(bundle_pkt)
-            await online_writer.drain()
-            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
-            await asyncio.sleep(0.5)
-        except Exception as e:
-            print(f"[BUNDLE] ❌ Lỗi: {e}")
 
         try:
             await asyncio.wait_for(squad_data_ready.wait(), timeout=5.0)
@@ -629,6 +620,17 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
             raise Exception(f"Owner UID không hợp lệ: {squad_owner_uid}")
         all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
         print(f"[EMT_CUSTOM] UIDs: owner={squad_owner_uid} | extra={extra_uids} | all={all_uids}")
+
+        # Thay đồ bundle 914050001 (sau khi đã join squad thành công)
+        try:
+            bundle_pkt = await bundle_packet_async(key, iv)
+            online_writer.write(bundle_pkt)
+            await online_writer.drain()
+            await asyncio.sleep(0.5)
+            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
+        except Exception as e:
+            print(f"[BUNDLE] ❌ Lỗi: {e}")
+
         for emote_id in custom_emotes:
             if online_writer is None:
                 print("[EMT_CUSTOM] ❌ Mất kết nối giữa chừng")
