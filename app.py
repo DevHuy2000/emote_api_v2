@@ -607,6 +607,7 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
         # Join squad
         EM = await GenJoinSquadsPacket(team_code, key, iv)
         await SEndPacKeT(online_writer, None, 'OnLine', EM)
+        await asyncio.sleep(0.5)
 
         # Thay đồ bundle 914050001
         try:
@@ -614,6 +615,7 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
             online_writer.write(bundle_pkt)
             await online_writer.drain()
             print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
+            await asyncio.sleep(0.5)
         except Exception as e:
             print(f"[BUNDLE] ❌ Lỗi: {e}")
 
