@@ -73,7 +73,7 @@ async def animation_packet_async(key, iv):
         1: 88,
         2: {
             1: {
-                1: 914047002,
+                1: 914050001,
             }
         }
     }
@@ -100,7 +100,7 @@ async def bundle_packet_async(key, iv):
         1: 88,
         2: {
             1: {
-                1: 914047002,
+                1: 914050001,
                 2: 1
             },
             2: 2
