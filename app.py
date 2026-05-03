@@ -68,7 +68,7 @@ async def encrypted_proto(encoded_hex):
     encrypted_payload = cipher.encrypt(padded_message)
     return encrypted_payload
     
-async def bundle_packet_async(key, iv):
+async def animation_packet_async(key, iv):
     fields = {
         1: 88,
         2: {
@@ -82,22 +82,45 @@ async def bundle_packet_async(key, iv):
     encrypted = await EnC_PacKeT(packet_hex, key, iv)
     header_length = len(encrypted) // 2
     header_length_hex = await DecodE_HeX(header_length)
-    if region.lower() == "ind":
-        packet_type = '0514'
-    elif region.lower() == "bd":
-        packet_type = "0519"
-    else:
-        packet_type = "0515"
     if len(header_length_hex) == 2:
-        final_header = f"{packet_type}000000"
+        final_header = "0515000000"
     elif len(header_length_hex) == 3:
-        final_header = f"{packet_type}00000"
+        final_header = "051500000"
     elif len(header_length_hex) == 4:
-        final_header = f"{packet_type}0000"
+        final_header = "05150000"
     elif len(header_length_hex) == 5:
-        final_header = f"{packet_type}000"
+        final_header = "0515000"
     else:
-        final_header = f"{packet_type}000000"
+        final_header = "0515000000"
+    final_packet_hex = final_header + header_length_hex + encrypted
+    return bytes.fromhex(final_packet_hex)
+
+async def bundle_packet_async(key, iv):
+    fields = {
+        1: 88,
+        2: {
+            1: {
+                1: 914050001,
+                2: 1
+            },
+            2: 2
+        }
+    }
+    packet = await CrEaTe_ProTo(fields)
+    packet_hex = packet.hex()
+    encrypted = await EnC_PacKeT(packet_hex, key, iv)
+    header_length = len(encrypted) // 2
+    header_length_hex = await DecodE_HeX(header_length)
+    if len(header_length_hex) == 2:
+        final_header = "0515000000"
+    elif len(header_length_hex) == 3:
+        final_header = "051500000"
+    elif len(header_length_hex) == 4:
+        final_header = "05150000"
+    elif len(header_length_hex) == 5:
+        final_header = "0515000"
+    else:
+        final_header = "0515000000"
     final_packet_hex = final_header + header_length_hex + encrypted
     return bytes.fromhex(final_packet_hex)
 
@@ -558,10 +581,13 @@ async def perform_emote(team_code: str, extra_uids: list = []):
 
         # Thay đồ bundle 914050001 (sau khi đã join squad thành công)
         try:
+            anim_pkt = await animation_packet_async(key, iv)
+            online_writer.write(anim_pkt)
+            await online_writer.drain()
+            await asyncio.sleep(3)
             bundle_pkt = await bundle_packet_async(key, iv)
             online_writer.write(bundle_pkt)
             await online_writer.drain()
-            await asyncio.sleep(0.5)
             print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
         except Exception as e:
             print(f"[BUNDLE] ❌ Lỗi: {e}")
@@ -623,10 +649,13 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
 
         # Thay đồ bundle 914050001 (sau khi đã join squad thành công)
         try:
+            anim_pkt = await animation_packet_async(key, iv)
+            online_writer.write(anim_pkt)
+            await online_writer.drain()
+            await asyncio.sleep(3)
             bundle_pkt = await bundle_packet_async(key, iv)
             online_writer.write(bundle_pkt)
             await online_writer.drain()
-            await asyncio.sleep(0.5)
             print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
         except Exception as e:
             print(f"[BUNDLE] ❌ Lỗi: {e}")
