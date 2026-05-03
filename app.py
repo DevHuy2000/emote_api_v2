@@ -73,7 +73,7 @@ async def animation_packet_async(key, iv):
         1: 88,
         2: {
             1: {
-                1: 914050001,
+                1: 914047002,
             }
         }
     }
@@ -100,7 +100,7 @@ async def bundle_packet_async(key, iv):
         1: 88,
         2: {
             1: {
-                1: 914050001,
+                1: 914047002,
                 2: 1
             },
             2: 2
@@ -584,7 +584,7 @@ async def perform_emote(team_code: str, extra_uids: list = []):
             anim_pkt = await animation_packet_async(key, iv)
             online_writer.write(anim_pkt)
             await online_writer.drain()
-            await asyncio.sleep(3)
+            await asyncio.sleep(0.5)
             bundle_pkt = await bundle_packet_async(key, iv)
             online_writer.write(bundle_pkt)
             await online_writer.drain()
@@ -652,7 +652,7 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
             anim_pkt = await animation_packet_async(key, iv)
             online_writer.write(anim_pkt)
             await online_writer.drain()
-            await asyncio.sleep(3)
+            await asyncio.sleep(0.5)
             bundle_pkt = await bundle_packet_async(key, iv)
             online_writer.write(bundle_pkt)
             await online_writer.drain()
