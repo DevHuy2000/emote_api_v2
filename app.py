@@ -19,6 +19,16 @@ list_emotes = [
     909039011, 909038010, 909042008, 909041005, 909033002
 ]
 
+# List of bundle IDs to random each join
+list_bundles = [
+    914051001,
+    914044001,
+    914047002,
+    914000002,
+    914039001,
+    914050001,
+]
+
 # VariabLe
 #------------------------------------------#
 online_writer = None
@@ -68,12 +78,14 @@ async def encrypted_proto(encoded_hex):
     encrypted_payload = cipher.encrypt(padded_message)
     return encrypted_payload
     
-async def animation_packet_async(key, iv):
+async def animation_packet_async(key, iv, bundle_id=None):
+    if bundle_id is None:
+        bundle_id = random.choice(list_bundles)
     fields = {
         1: 88,
         2: {
             1: {
-                1: 914050001,
+                1: bundle_id,
             }
         }
     }
@@ -95,12 +107,14 @@ async def animation_packet_async(key, iv):
     final_packet_hex = final_header + header_length_hex + encrypted
     return bytes.fromhex(final_packet_hex)
 
-async def bundle_packet_async(key, iv):
+async def bundle_packet_async(key, iv, bundle_id=None):
+    if bundle_id is None:
+        bundle_id = random.choice(list_bundles)
     fields = {
         1: 88,
         2: {
             1: {
-                1: 914050001,
+                1: bundle_id,
                 2: 1
             },
             2: 2
@@ -579,16 +593,17 @@ async def perform_emote(team_code: str, extra_uids: list = []):
         all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
         print(f"[EMT] UIDs: owner={squad_owner_uid} | extra={extra_uids} | all={all_uids}")
 
-        # Thay đồ bundle 914050001 (sau khi đã join squad thành công)
+        # Thay đồ bundle (random từ list_bundles mỗi lần join)
         try:
-            anim_pkt = await animation_packet_async(key, iv)
+            chosen_bundle = random.choice(list_bundles)
+            anim_pkt = await animation_packet_async(key, iv, bundle_id=chosen_bundle)
             online_writer.write(anim_pkt)
             await online_writer.drain()
-            await asyncio.sleep(1.5)
-            bundle_pkt = await bundle_packet_async(key, iv)
+            await asyncio.sleep(2)
+            bundle_pkt = await bundle_packet_async(key, iv, bundle_id=chosen_bundle)
             online_writer.write(bundle_pkt)
             await online_writer.drain()
-            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
+            print(f"[BUNDLE] Đã thay đồ bundle ID: {chosen_bundle}")
         except Exception as e:
             print(f"[BUNDLE] ❌ Lỗi: {e}")
 
@@ -647,16 +662,17 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
         all_uids = list({squad_owner_uid} | set(extra_uids) | {BOT_UID})
         print(f"[EMT_CUSTOM] UIDs: owner={squad_owner_uid} | extra={extra_uids} | all={all_uids}")
 
-        # Thay đồ bundle 914050001 (sau khi đã join squad thành công)
+        # Thay đồ bundle (random từ list_bundles mỗi lần join)
         try:
-            anim_pkt = await animation_packet_async(key, iv)
+            chosen_bundle = random.choice(list_bundles)
+            anim_pkt = await animation_packet_async(key, iv, bundle_id=chosen_bundle)
             online_writer.write(anim_pkt)
             await online_writer.drain()
-            await asyncio.sleep(1.5)
-            bundle_pkt = await bundle_packet_async(key, iv)
+            await asyncio.sleep(2)
+            bundle_pkt = await bundle_packet_async(key, iv, bundle_id=chosen_bundle)
             online_writer.write(bundle_pkt)
             await online_writer.drain()
-            print(f"[BUNDLE] Đã thay đồ bundle ID: 914050001")
+            print(f"[BUNDLE] Đã thay đồ bundle ID: {chosen_bundle}")
         except Exception as e:
             print(f"[BUNDLE] ❌ Lỗi: {e}")
 
