@@ -646,6 +646,11 @@ async def perform_emote_custom(team_code: str, custom_emotes: list, extra_uids: 
 
         return {"status": "success", "message": f"Done {len(custom_emotes)} emotes", "uids": all_uids, "emotes": custom_emotes}
 
+    except Exception as e:
+        traceback.print_exc()
+        print(f"[EMT_CUSTOM] ❌ perform_emote_custom thất bại: {e}")
+        raise Exception(f"Failed: {str(e)}")
+
 async def perform_squad_invite(uid: int):
     global key, iv, region, online_writer, whisper_writer, BOT_UID
 
@@ -768,7 +773,7 @@ def join_team_custom():
         "team_code": team_code,
         "emotes": custom_emotes,
         "Dev": "@S_ZU_01",
-        "message": "Bot Đang Join, Thay Đồ, Và Gởi Custom Emote..."
+        "message": "Bot Join, Send Emote ✓"
     })
 
 def run_flask():
